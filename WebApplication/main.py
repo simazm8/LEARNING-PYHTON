@@ -77,17 +77,32 @@ def my_form_post():
             newer_link = newer_link+random.choice(char_array)
         cnx = mysql.connector.connect(**config)
         cursor = cnx.cursor(buffered=True)
-        cursor.execute(SELECT_SHORT_LINK,(processed_link, ))
-        short_link = cursor.fetchone()
-        if  short_link == None :
-            cursor.execute("INSERT INTO URLS(Long_Url, Short_Url) VALUES (%s, %s)", (processed_link, newer_link))
-            cnx.commit()
-        else:
-            cursor.execute("SELECT Short_Url FROM URLS WHERE Long_Url = %s", (processed_link, ) )
-            newer_link = str(cursor.fetchone())
-            newer_link = remove_symbols(newer_link)
-        cursor.close()
-        cnx.close()
+        try:
+            cursor.execute(SELECT_SHORT_LINK,(processed_link, ))
+            short_link = cursor.fetchone()
+            if  short_link == None :
+                cursor.execute("INSERT INTO URLS(Long_Url, Short_Url) VALUES (%s, %s)", (processed_link, newer_link))
+                cnx.commit()
+            else:
+                cursor.execute("SELECT Short_Url FROM URLS WHERE Long_Url = %s", (processed_link, ) )
+                newer_link = str(cursor.fetchone())
+                newer_link = remove_symbols(newer_link)
+        except MySQLdb.Error as e:
+            try:
+                    print ("MySQL Error [%d]: %s" % (e.args[0], e.args[1]))
+                    return None
+            except IndexError:
+                    print ("MySQL Error: %s" % str(e))
+                    return None
+        except TypeError as e:
+            print(e)
+            return None
+        except ValueError as e:
+            print(e)
+            return None
+        finally:
+            cursor.close()
+            cnx.close()
         return render_template("home.html", processed_link = route + newer_link)
 
 if __name__ == "__main__":
