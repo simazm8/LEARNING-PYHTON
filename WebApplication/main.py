@@ -17,6 +17,10 @@ config = {
   'database': 'X2N5VVsN16',
   'raise_on_warnings': True
 }
+def remove_char(word,remove):
+    return word.replace(remove,'')
+
+
 def remove_symbols(word):
     for x in word:
         word = word.replace("'","")
@@ -30,12 +34,27 @@ def redirection(route_id):
     cnx = mysql.connector.connect(**config)
     cursor = cnx.cursor()
     route_id = "/"+route_id
-    cursor.execute(SELECT_LONG_LINK,(route_id,))
-    redirect_link = str(cursor.fetchone())
-    cursor.close()
-    cnx.close()
+    try:
+        cursor.execute(SELECT_LONG_LINK,(route_id,))
+        redirect_link = str(cursor.fetchone())
+    except MySQLdb.Error as e:
+        try:
+                print ("MySQL Error [%d]: %s" % (e.args[0], e.args[1]))
+                return None
+        except IndexError:
+                print ("MySQL Error: %s" % str(e))
+                return None
+    except TypeError as e:
+        print(e)
+        return None
+    except ValueError as e:
+        print(e)
+        return None
+    finally:
+        cursor.close()
+        cnx.close()
     redirect_link = remove_symbols(redirect_link)
-    return redirect("http://"+redirect_link, code=302)
+    return redirect("https://"+redirect_link, code=302)
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -46,6 +65,11 @@ def my_form_post():
     #connect to db
     user_link = request.form['text']
     processed_link = user_link.lower()
+    #link formatting to normalise database data
+    if "https://" in processed_link:
+        processed_link = remove_char(processed_link,"https://")
+    if "http://" in processed_link:
+        processed_link = remove_char(processed_link,"http://")
     if (len(user_link)>255):
         return render_template("home.html", processed_link = "link is too long (max length = 255)")
     else:
